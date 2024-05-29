@@ -1,4 +1,15 @@
-// Insert a document in the collection school
-// document must have attribute name with value "Holberton school"
-// database name will be passed as option of mongo command
+#!/usr/bin/env bash
+
+# Define the MongoDB database name
+db_name="$1"
+
+# Check if the database name is provided
+if [ -z "$db_name" ]; then
+    echo "Usage: $0 <database_name>"
+    exit 1
+fi
+
+# MongoDB shell command to insert the document
+mongo "$db_name" <<EOF
 db.school.insert({name: "Holberton school"})
+EOF
