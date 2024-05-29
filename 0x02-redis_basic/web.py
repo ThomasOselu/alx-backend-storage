@@ -18,12 +18,13 @@ def track_get_page(fn: Callable) -> Callable:
             - tracks how many times get_page is called
         """
         client = redis.Redis()
-        client.incr(f'count:{url}')
-        cached_page = client.get(f'{url}')
+        cache_key = f'count:{url}'
+        client.incr(cache_key)
+        cached_page = client.get(url)
         if cached_page:
             return cached_page.decode('utf-8')
         response = fn(url)
-        client.set(f'{url}', response, 10)
+        client.set(url, response, 10)
         return response
     return wrapper
 
@@ -33,4 +34,5 @@ def get_page(url: str) -> str:
     """ Makes a http request to a given endpoint
     """
     response = requests.get(url)
+    response.raise_for_status()  # Raise an HTTPError if the HTTP request returned an unsuccessful status code
     return response.text
