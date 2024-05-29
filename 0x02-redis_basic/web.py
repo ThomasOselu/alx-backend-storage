@@ -1,6 +1,11 @@
+#!/usr/bin/env python3
+"""
+Caching request module
+"""
 import requests
 import time
 from functools import wraps
+
 
 CACHE_EXPIRATION = 10  # in seconds
 url_access_counts = {}
