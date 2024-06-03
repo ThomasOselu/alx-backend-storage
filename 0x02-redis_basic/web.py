@@ -1,38 +1,33 @@
 #!/usr/bin/env python3
-'''A module with tools for request caching and tracking.
+'''A module for using the Redis NoSQL data storage.
 '''
-import redis
 import requests
-from functools import wraps
+import functools
+import redis
 from typing import Callable
 
+def cache(ttl: int = 10):
+    def decorator(func: Callable) -> Callable:
+        cache = redis.Redis()
+        @functools.wraps(func)
+        def wrapper(url: str) -> str:
+            cache_key = f"cache:{url}"
+            count_key = f"count:{url}"
+            if cache.exists(cache_key):
+                return cache.get(cache_key).decode("utf-8")
+            else:
+                result = func(url)
+                cache.setex(cache_key, ttl, result)
+                cache.incr(count_key)
+                return result
+        return wrapper
+    return decorator
 
-redis_store = redis.Redis()
-'''The module-level Redis instance.
-'''
-
-
-def data_cacher(method: Callable) -> Callable:
-    '''Caches the output of fetched data.
-    '''
-    @wraps(method)
-    def invoker(url) -> str:
-        '''The wrapper function for caching the output.
-        '''
-        redis_store.incr(f'count:{url}')
-        result = redis_store.get(f'result:{url}')
-        if result:
-            return result.decode('utf-8')
-        result = method(url)
-        redis_store.set(f'count:{url}', 0)
-        redis_store.setex(f'result:{url}', 10, result)
-        return result
-    return invoker
-
-
-@data_cacher
+@cache(ttl=10)
 def get_page(url: str) -> str:
-    '''Returns the content of a URL after caching the request's response,
-    and tracking the request.
-    '''
-    return requests.get(url).text
+    response = requests.get(url)
+    return response.text
+
+if __name__ == "__main__":
+    print(get_page("http://slowwly.robertomurray.co.uk"))
+    print(get_page("http://slowwly.robertomurray.co.uk"))
