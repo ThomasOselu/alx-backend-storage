@@ -1,65 +1,39 @@
 #!/usr/bin/env python3
-'''A module for using the Redis NoSQL data storage.
-'''
+""" Optional Task 1 """
+
 import requests
-import functools
 import redis
-from typing import Callable
+from functools import wraps
+from typing import Any, Callable, Dict, List
 
 
-def cache(ttl: int = 10) -> Callable:
-    """
-    A decorator to cache the result of a function for a certain amount of time.
-
-    Args:
-    ttl (int): The time to live in seconds. Defaults to 10.
-
-    Returns:
-    Callable: A decorator function.
-    """
-
-    cache = redis.Redis()
-
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(url: str) -> str:
-            """
-            A wrapper function to cache the result of the decorated function.
-
-            Args:
-            url (str): The URL to get the page from.
-
-            Returns:
-            str: The HTML content of the page.
-            """
-            cache_key = f"cache:{url}"
-            count_key = f"count:{url}"
-            if cache.exists(cache_key):
-                return cache.get(cache_key).decode("utf-8")
-            else:
-                result = func(url)
-                cache.setex(cache_key, ttl, result)
-                cache.incr(count_key)
-                return result
-        return wrapper
-    return decorator
+def track_and_cache(method: Callable) -> Callable:
+    """Tracks Access"""
+    @wraps(method)
+    def wrapper(url, *args, **kwargs):
+        """Wrapper"""
+        redis_instance = redis.Redis()
+        key = f"count:{url}"
+        cache = f"{url}"
+        redis_instance.incr(key)
+        cached = redis_instance.get(cache)
+        if cached is not None:
+            return cached.decode('utf-8')
+        response = method(url, *args, **kwargs)
+        redis_instance.setex(cache, 10, response)
+        return response
+    return wrapper
 
 
-@cache(ttl=10)
+@track_and_cache
 def get_page(url: str) -> str:
-    """
-    Get the HTML content of a page.
-
-    Args:
-    url (str): The URL to get the page from.
-
-    Returns:
-    str: The HTML content of the page.
-    """
+    """uses the requests module
+    to obtain the HTML content of a particular URL
+    and returns it"""
     response = requests.get(url)
     return response.text
 
 
 if __name__ == "__main__":
-    print(get_page("http://google.com"))
-    print(get_page("http://google.com"))
+    """Main function"""
+    get_page("http://slowwly.robertomurray.co.uk")
