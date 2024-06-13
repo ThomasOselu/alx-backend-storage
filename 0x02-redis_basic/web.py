@@ -1,36 +1,41 @@
 #!/usr/bin/env python3
 import requests
-import time
-from functools import wraps
-from typing import Dict
-
-cache: Dict[str, str] = {}
+import redis
+import functools
 
 
-def get_page(url: str) -> str:
-    if url in cache:
-        print(f"Retrieving from cache: {url}")
-        return cache[url]
-    else:
-        print(f"Retrieving from web: {url}")
+class Web:
+    def __init__(self):
+        """Initialize the Web class"""
+        self._redis = redis.Redis()
+        self._redis.flushdb()
+
+    def get_page(self, url: str) -> str:
+        """Get the HTML content of a particular URL"""
+        cache_key = f"cache:{url}"
+        count_key = f"count:{url}"
+        if self._redis.exists(cache_key):
+            return self._redis.get(cache_key).decode('utf-8')
         response = requests.get(url)
-        result = response.text
-        cache[url] = result
-        return result
+        self._redis.setex(cache_key, 10, response.text)
+        self._redis.incr(count_key)
+        return response.text
+
+    def count_calls(self, method):
+        """Count how many times a particular URL was accessed"""
+        @functools.wraps(method)
+        def wrapper(self, url: str):
+            count_key = f"count:{url}"
+            self._redis.incr(count_key)
+            return method(self, url)
+        return wrapper
+
+    get_page = count_calls(get_page)
+
+# Example usage:
 
 
-def cache_with_expiration(expiration: int):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            url = args[0]
-            key = f"count:{url}"
-            if key in cache:
-                count, timestamp = cache[key]
-                if time.time() - timestamp > expiration:
-                    result = func(*args, **kwargs)
-                    cache[key] = (count+1, time.time())
-                    return result
-                else:
-                    cache[key] = (count+1, timestamp)
-                    return
+web = Web()
+print(web.get_page("http://slowwly.robertomurray.co.uk"))
+print(web.get_page("http://slowwly.robertomurray.co.uk"))
+print(web.get_page("http://slowwly.robertomurray.co.uk"))
