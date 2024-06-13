@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """ Optional Task 1 """
 
+
 import requests
 import redis
 from functools import wraps
 import time
 
+# Initialize Redis connection
 redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 
@@ -73,3 +75,11 @@ if __name__ == "__main__":
     count_key = f"count:{test_url}"
     count = redis_client.get(count_key)
     print(f"Access count for {test_url}: {count.decode('utf-8')}")
+
+    # Check if the cache is cleared after 10 seconds
+    time.sleep(11)
+    cached_page = redis_client.get(f"cache:{test_url}")
+    if cached_page is None:
+        print("Cache for the URL has expired.")
+    else:
+        print("Cache for the URL still exists.")
