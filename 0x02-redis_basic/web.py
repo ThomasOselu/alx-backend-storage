@@ -6,6 +6,7 @@ from typing import Dict
 
 cache: Dict[str, str] = {}
 
+
 def get_page(url: str) -> str:
     if url in cache:
         print(f"Retrieving from cache: {url}")
@@ -16,6 +17,7 @@ def get_page(url: str) -> str:
         result = response.text
         cache[url] = result
         return result
+
 
 def cache_with_expiration(expiration: int):
     def decorator(func):
